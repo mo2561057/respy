@@ -746,7 +746,7 @@ def create_is_inadmissible(df, optim_paras, options):
         for formula in options["negative_choice_set"][choice]:
             try:
                 df[f"_{choice}"] |= df.eval(formula)
-            except pd.core.computation.ops.UndefinedVariableError:
+            except NameError:
                 pass
 
     return df
@@ -790,7 +790,8 @@ def _create_core_period_choice(core, optim_paras, options):
     df = copy.copy(core)
     df = create_is_inadmissible(df, optim_paras, options)
     df[choices] = ~df[choices]
-    core_period_choice = return_index_for_comb(core,["period"] + choices)
+    core_period_choice = core.return_index_for_comb(["period"] + choices)
+    core_period_choice = {(key[0],key[1:]):value for key,value in core_period_choice}
     return core_period_choice
 
 
@@ -823,7 +824,10 @@ def _create_dense_period_choice(
         choices = [f"_{choice}" for choice in optim_paras["choices"]]
         dense_period_choice = {}
         for dense_idx, (_, dense_vec) in enumerate(dense.items()):
-            states = copy.copy(core).assign(**dense_vec)
+            states = copy.copy(core)
+            for key in dense_vec.keys():
+                    states[key] = dense_vec[key]
+            
             states = compute_covariates(states, options["covariates_all"])
 
             states = create_is_inadmissible(states, optim_paras, options)
@@ -834,16 +838,7 @@ def _create_dense_period_choice(
                 for choice in choices:
                     df[choice] = ~df[choice]
                 
-                unique_combinations = df.drop_duplicates(subset=choices)[choices]
-                choice_combs = []
-                for ix in unique_combinations.index:
-                    choice_combs.append(unique_combinations.loc[ix,choices].values)
-                grouper = {}
-                
-                for comb in choice_combs:
-                    filter_ = (df[choices] == comb).all(axis=1)
-                    grouper[tuple(comb)] = list(df[filter_].index)
-
+                grouper = df.return_index_for_comb(["period"] + choices)
                 if not len(grouper) == 1:
                     raise ValueError(
                         "Choice restrictions cannot interact between core and dense "
@@ -853,13 +848,13 @@ def _create_dense_period_choice(
                     )
                 period_choice = {
                     (core_key_to_complex[core_idx][0], idx, dense_idx): core_idx
-                    for idx, indices in grouper.items()
+                    for idx, indices in grouper
                 }
 
                 dense_period_choice = {**dense_period_choice, **period_choice}
-                idx = list(grouper.keys())[0]
+                idx = grouper[0][0]
                 dump_objects(
-                    df,
+                    df.core,
                     "states",
                     (core_key_to_complex[core_idx][0], idx, dense_idx),
                     options,

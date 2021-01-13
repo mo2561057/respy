@@ -875,14 +875,14 @@ class core_class:
 
     def return_index_for_comb(self,cols):
         combs = itertools.product([self.core[col].unique() for col in cols])
-        out = {}
+        out = []
         for comb in combs:
             cont_im = []
             for i,col in enumerate(cols):
                 cont_im.append(self.core[col] == comb[i])
             filter_ = functools.reduce(cont_im, bool_comb)
             ix = np.where(filter_,True)
-            out[(comb[0],comb[1:])] = ix
+            out.append((comb,ix))
         return out
     
     def assign(self,vec):
