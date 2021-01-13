@@ -5,6 +5,7 @@ import from respy itself. This is to prevent circular imports.
 
 """
 import shutil
+import copy
 
 import chaospy as cp
 import numba as nb
@@ -292,7 +293,7 @@ def compute_covariates(df, definitions, check_nans=False, raise_errors=True):
                 # If true, perform checks for NaNs.
                 if check_nans:
                     have_dependencies_no_missings = all(
-                        df.eval(f"{dep}.notna().all()")
+                        df.eval(f"np.all(~np.isnan({dep}))")
                         for dep in definitions[covariate]["depends_on"]
                     )
                 else:
@@ -301,7 +302,7 @@ def compute_covariates(df, definitions, check_nans=False, raise_errors=True):
                 have_dependencies_no_missings = False
 
             if have_dependencies_no_missings:
-                df[covariate] = df.eval(definitions[covariate]["formula"])
+                df[covariate] = df.eval_core(definitions[covariate]["formula"])
                 covariates_left.remove(covariate)
 
         has_covariates_left_changed = n_covariates_left != len(covariates_left)
@@ -807,3 +808,83 @@ def get_exogenous_from_dense_covariates(dense_covariates, optim_paras):
     """
     num_exog = len(optim_paras["exogenous_processes"])
     return dense_covariates[-num_exog:]
+
+
+def bool_comb(x,y):
+    return x & y
+
+
+class core_class:
+    """Insert docstring."""
+
+    def __init__(
+        self,
+        core,
+        columns,
+        index,
+        shape
+    ):
+        """Rebuild core df.
+
+        Parameters
+        ----------
+        core : pandas.DataFrame
+            DataFrame containing one core state per row.
+        """
+        self.core = core
+        self.columns = columns
+        self.index = index
+        self.shape = shape
+
+
+    def __len__(self):
+        return self.shape[0]
+    
+
+    def __getitem__(self,key):
+        """Subset core to positional indices.
+        Args:
+            core: dict of numpy arrays
+            indices: list of integers
+        """
+        if type(key) is list:
+            return {x:self.core[x] for x in key}
+        
+        else:
+            return self.core[key]
+    
+    def __setitem__(self,key,value):
+        """Subset core to positional indices.
+        Args:
+            core: dict of numpy arrays
+            indices: list of integers
+        """
+        self.core[key] = value
+
+    def eval_core(self,exp):
+        return eval(exp,{},self.core)
+
+    def subset(self,ix):
+        out = {key:self.core[key][ix] for key in self.core}
+        return core_class(
+            out,
+            self.columns,
+            ix,
+            (len(ix),self.shape[1])
+        )
+
+    def return_index_for_comb(self,cols):
+        combs = itertools.product([self.core[col].unique() for col in cols])
+        out = {}
+        for comb in combs:
+            cont_im = []
+            for i,col in enumerate(cols):
+                cont_im.append(self.core[col] == comb[i])
+            filter_ = functools.reduce(cont_im, bool_comb)
+            ix = np.where(filter_,True)
+            out[(comb[0],comb[1:])] = ix
+        return out
+    
+    def assign(self,vec):
+        pass
+

@@ -1,5 +1,6 @@
 """Everything related to the state space of a structural model."""
 import itertools
+import copy
 
 import numba as nb
 import numpy as np
@@ -23,16 +24,25 @@ from respy.shared import load_objects
 from respy.shared import map_states_to_core_key_and_core_index
 from respy.shared import prepare_cache_directory
 from respy.shared import return_core_dense_key
+from respy.shared import core_class
 
 
 def create_state_space_class(optim_paras, options):
     """Create the state space of the model."""
     prepare_cache_directory(options)
-    core = _create_core_state_space(optim_paras, options)
+    core_df = _create_core_state_space(optim_paras, options)
+
+    core = core_class(
+        {key:core_df[key] for key in core_df.columns},
+        core_df.columns,
+        core_df.index,
+        core_df.shape)
+
     dense_grid = _create_dense_state_space_grid(optim_paras)
     # Downcast after calculations or be aware of silent integer overflows.
     core = compute_covariates(core, options["covariates_core"])
-    core = core.apply(downcast_to_smallest_dtype)
+    
+    #core = core.apply(downcast_to_smallest_dtype). Some kind of tape management
     dense = _create_dense_state_space_covariates(dense_grid, optim_paras, options)
 
     core_period_choice = _create_core_period_choice(core, optim_paras, options)
@@ -729,7 +739,7 @@ def _create_dense_state_space_covariates(dense_grid, optim_paras, options):
 
 def create_is_inadmissible(df, optim_paras, options):
     """Compute is_inadmissible for passed states."""
-    df = df.copy()
+    df = copy.copy(df)
 
     for choice in optim_paras["choices"]:
         df[f"_{choice}"] = False
@@ -777,13 +787,10 @@ def _create_core_period_choice(core, optim_paras, options):
 
     """
     choices = [f"_{choice}" for choice in optim_paras["choices"]]
-    df = core.copy()
+    df = copy.copy(core)
     df = create_is_inadmissible(df, optim_paras, options)
     df[choices] = ~df[choices]
-    core_period_choice = {
-        (idx[0], idx[1:]): indices
-        for idx, indices in df.groupby(["period"] + choices).groups.items()
-    }
+    core_period_choice = return_index_for_comb(core,["period"] + choices)
     return core_period_choice
 
 
@@ -816,19 +823,16 @@ def _create_dense_period_choice(
         choices = [f"_{choice}" for choice in optim_paras["choices"]]
         dense_period_choice = {}
         for dense_idx, (_, dense_vec) in enumerate(dense.items()):
-            states = core.copy()
-            for key in dense_vec.keys():
-                states[key] = dense_vec[key]
-            states = core.copy().assign(**dense_vec)
+            states = copy.copy(core).assign(**dense_vec)
             states = compute_covariates(states, options["covariates_all"])
 
             states = create_is_inadmissible(states, optim_paras, options)
             for core_idx, indices in core_key_to_core_indices.items():
-                df = states.copy().loc[indices]
+                df = subset(copy.copy(states),indices)
                 for key in dense_vec.keys():
                     df[key] = dense_vec[key]
                 for choice in choices:
-                    df[choice] = df[choice].replace({True:False, False:True})
+                    df[choice] = ~df[choice]
                 
                 unique_combinations = df.drop_duplicates(subset=choices)[choices]
                 choice_combs = []
