@@ -4,8 +4,10 @@ This module should only import from other packages or modules of respy which als
 import from respy itself. This is to prevent circular imports.
 
 """
-import shutil
 import copy
+import functools
+import itertools
+import shutil
 
 import chaospy as cp
 import numba as nb
@@ -810,10 +812,6 @@ def get_exogenous_from_dense_covariates(dense_covariates, optim_paras):
     return dense_covariates[-num_exog:]
 
 
-def bool_comb(x,y):
-    return x & y
-
-
 class core_class:
     """Insert docstring."""
 
@@ -874,13 +872,14 @@ class core_class:
         )
 
     def return_index_for_comb(self,cols):
-        combs = itertools.product([self.core[col].unique() for col in cols])
+        for col in cols:
+        combs = itertools.product(*[list(np.unique(self.core[col])) for col in cols])
         out = []
         for comb in combs:
             cont_im = []
             for i,col in enumerate(cols):
                 cont_im.append(self.core[col] == comb[i])
-            filter_ = functools.reduce(cont_im, bool_comb)
+            filter_ = functools.reduce(lambda x,y: x & y, cont_im)
             ix = np.where(filter_,True)
             out.append((comb,ix))
         return out

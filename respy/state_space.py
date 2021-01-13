@@ -742,12 +742,12 @@ def create_is_inadmissible(df, optim_paras, options):
     df = copy.copy(df)
 
     for choice in optim_paras["choices"]:
-        df[f"_{choice}"] = False
+        df[f"_{choice}"] = np.repeat(False,len(df))
         for formula in options["negative_choice_set"][choice]:
             try:
-                df[f"_{choice}"] |= df.eval(formula)
+                df[f"_{choice}"] |= df.eval_core(formula)
             except NameError:
-                pass
+                prnt(f"Could not calculate {choice}")
 
     return df
 
@@ -789,8 +789,10 @@ def _create_core_period_choice(core, optim_paras, options):
     choices = [f"_{choice}" for choice in optim_paras["choices"]]
     df = copy.copy(core)
     df = create_is_inadmissible(df, optim_paras, options)
-    df[choices] = ~df[choices]
-    core_period_choice = core.return_index_for_comb(["period"] + choices)
+    for choice in choices:
+        df[choice] = ~df[choice]
+    subset = ["period"] + choices
+    core_period_choice = core.return_index_for_comb(subset)
     core_period_choice = {(key[0],key[1:]):value for key,value in core_period_choice}
     return core_period_choice
 
