@@ -145,10 +145,10 @@ def simulate(
     ----------
     params : pandas.DataFrame or pandas.Series
         Contains parameters.
-    base_draws_sim : numpy.ndarray [float]
+    base_draws_sim : :class:`numpy.ndarray` [float]
         Array with shape (n_periods, n_individuals, n_choices) to provide a unique set
         of shocks for each individual in each period.
-    base_draws_wage : numpy.ndarray [float]
+    base_draws_wage : :class:`numpy.ndarray` [float]
         Array with shape (n_periods, n_individuals, n_choices) to provide a unique set
         of wage measurement errors for each individual in each period.
     df : pandas.DataFrame or None
@@ -276,9 +276,9 @@ def update_dense_state_variables(df, dense_key_to_dense_covariates, optim_paras)
     df : pandas.DataFrame
         A pandas DataFrame containing the updated state variables, as well as the
         draw of next periods dense key.
-    dense_key_to_dense_covariates : dict
+    dense_key_to_dense_covariates : dict [int, dict]
         Dictionary with dense_key as keys and dense grid points.
-    optim_paras : dict
+    optim_paras : dict [str, int or float or :class:`numpy.ndarray` or dict]
 
     Returns
     -------
@@ -459,13 +459,14 @@ def draw_dense_key_next_period(complex_tuple, core_index, options):
 
     Parameters
     ----------
-    complex_tuple :
-    core_index :
+    complex_tuple : tuple [int or tuple [bool]]
+        Tuple of shape (int, tuple [bool], int).
+    core_index : pandas.Series
     options : dict [str, int or list or dict]
 
     Returns
     -------
-    dense_key_next_period : pd:Series
+    dense_key_next_period : pandas.Series
         A pandas Series containing the dense keys in the next period for all keys.
 
     """
@@ -513,7 +514,7 @@ def _sample_characteristic(states_df, options, level_dict, use_keys):
 
     Returns
     -------
-    characteristic : numpy.ndarray [int]
+    characteristic : :class:`numpy.ndarray` [int]
         Array with shape (n_individuals,) containing sampled values.
 
     """

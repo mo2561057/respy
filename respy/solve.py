@@ -141,13 +141,13 @@ def _create_choice_rewards(states, choice_set, optim_paras):
 
     Parameters
     ----------
-        states : pandas.DataFrame
-        choice_set : tuple [bool]
-        optim_paras : dict [str, int or float or :class:`numpy.ndarray` or dict]
+    states : pandas.DataFrame
+    choice_set : tuple [bool]
+    optim_paras : dict [str, int or float or :class:`numpy.ndarray` or dict]
 
     Returns
     -------
-        wages, nonpecs : class:`numpy.ndarray` [:class:`numpy.ndarray` [float]]
+    wages, nonpecs : class:`numpy.ndarray` [:class:`numpy.ndarray` [float]]
 
     """
     n_choices = sum(choice_set)
@@ -259,15 +259,15 @@ def _full_solution(
 
     Parameters
     ----------
-        wages : dict [int, :class:`numpy.ndarray` [:class:`numpy.ndarray` [float]]]
-        nonpecs : dict [int, :class:`numpy.ndarray` [:class:`numpy.ndarray` [float]]]
-        continuation_values : dict [int, :class:`numpy.ndarray` [:class:`numpy.ndarray` [float]]]
-        period_draws_emax_risk : dict [int, :class:`numpy.ndarray` [:class:`numpy.ndarray` [float]]]
-        optim_paras : dict [str, int or float or :class:`numpy.ndarray` or dict]
+    wages : dict [int, :class:`numpy.ndarray` [:class:`numpy.ndarray` [float]]]
+    nonpecs : dict [int, :class:`numpy.ndarray` [:class:`numpy.ndarray` [float]]]
+    continuation_values : dict [int, :class:`numpy.ndarray` [:class:`numpy.ndarray` [float]]]
+    period_draws_emax_risk : dict [int, :class:`numpy.ndarray` [:class:`numpy.ndarray` [float]]]
+    optim_paras : dict [str, int or float or :class:`numpy.ndarray` or dict]
 
     Returns
     -------
-        period_expected_value_functions : dict [int, :class:`numpy.ndarray` [float]]
+    period_expected_value_functions : dict [int, :class:`numpy.ndarray` [float]]
     """
     period_expected_value_functions = calculate_expected_value_functions(
         wages,

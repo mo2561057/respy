@@ -20,9 +20,16 @@ def compute_transition_probabilities(
     in this function. Therefore we retrieve probabilities for individuals
     and combine them to get a full transition matrix.
 
+    Parameters
+    ----------
+    states : pandas.DataFrame
+    transit_keys : list [int]
+    optim_paras : dict [str, int or float or :class:`numpy.ndarray` or dict]
+    dense_key_to_dense_covariates : dict [int, tuple [int]]
+
     Returns
     -------
-    df : pandas.core.DataFrame
+    df : pandas.DataFrame
         Rows represent states within a dense key and columns potential
         dense states in the next period.
 
@@ -80,10 +87,17 @@ def weight_continuation_values(
     Another imortant point are states that can only be reached with a change
     of exogenous process.
 
+    Parameters
+    ----------
+    complex_ : tuple [int or tuple [bool]]
+        Tuple with structure (int, tuple [int], int)
+    options : dict [str, int or list or dict]
+    continuation_values : dict [int, numpy.ndarray [numpy.ndarray [float]]]
+    transit_key_to_choice_set : dict [int, numpy.ndarray [bool]]
 
     Returns
     -------
-    continuation_values : np.array
+    continuation_values : :class:`numpy.ndarray` [:class:`numpy.ndarray` [float]]]
       (n_states, n_choices) with the weighted continuation values.
 
     """
@@ -115,7 +129,18 @@ def weight_continuation_values(
 def create_transit_choice_set(
     dense_key_to_transit_representation, dense_key_to_choice_set
 ):
-    """Return max representation choice set of each dense choice core."""
+    """Return max representation choice set of each dense choice core.
+
+    Parameters
+    ----------
+    dense_key_to_transit_representation : dict [int, list [int]]
+    dense_key_to_choice_set : dict [int, tuple [bool]]
+
+    Returns
+    -------
+        out : dict [int, :class:`numpy.ndarray` [bool]]
+
+    """
     continuation_choice_sets = {}
     for dense_key in dense_key_to_transit_representation:
         continuation_choice_sets[dense_key] = []
@@ -127,6 +152,7 @@ def create_transit_choice_set(
     out = {}
     for dense_key in continuation_choice_sets:
         out[dense_key] = _get_maximal_choice_set(continuation_choice_sets[dense_key])
+
     return out
 
 
@@ -153,7 +179,21 @@ def create_transition_objects(
     dense_covariates_to_dense_index,
     core_key_and_dense_index_to_dense_key,
 ):
-    """Create objects necessary for tranistion probabilities."""
+    """Create objects necessary for tranistion probabilities.
+
+    Parameters
+    ----------
+    dense_covariates : tuple [int]
+    core_key : int
+    exogenous_grid : list [tuple [int]]
+    n_exog : int
+    dense_covariates_to_dense_index : numba.typed.typeddict.Dict [tuple, int]
+    core_key_and_dense_index_to_dense_key : numba.typed.typeddict.Dict [tuple, int]
+
+    Returns
+    -------
+    eachable_dense_keys : list [int]
+    """
     static_dense = dense_covariates[:-n_exog]
 
     reachable_dense_indices = [
