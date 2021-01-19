@@ -807,7 +807,7 @@ def _create_core_period_choice(core, optim_paras, options):
 
     Returns
     -------
-    core_period_choice : dict
+    core_period_choice : dict [tuple [int, tuple [bool]], pandas.Int64Index]
         c: (period, choice_set) -> core_indices
 
     """
@@ -819,6 +819,7 @@ def _create_core_period_choice(core, optim_paras, options):
         (idx[0], idx[1:]): indices
         for idx, indices in df.groupby(["period"] + choices).groups.items()
     }
+
     return core_period_choice
 
 
@@ -837,7 +838,7 @@ def _create_dense_period_choice(
 
     Returns
     -------
-    dense_period_choice : dict
+    dense_period_choice : dict [tuple [int or tuple [bool], int]
         d: (period, choice_set, dense_index) -> core_key
 
     """
