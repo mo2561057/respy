@@ -409,7 +409,7 @@ class StateSpace:
         ----------
         attribute : str
             The name of the state space attribute which is changed in-place.
-        value : numpy.ndarray
+        value : :class:`numpy.ndarray`
             The value to which the Numpy array is set.
 
         """
@@ -550,11 +550,11 @@ def _create_core_state_space_per_period_alt(
     ----------
     period : int
         Number of period.
-    additional_exp : numpy.ndarray
+    additional_exp : :class:`numpy.ndarray`
         Array with shape (n_choices_w_exp,) containing integers representing the
         additional experience per choice which is admissible. This is the difference
         between the maximum experience and minimum of initial experience per choice.
-    experiences : None or numpy.ndarray, default None
+    experiences : None or :class:`numpy.ndarray`, default None
         Array with shape (n_choices_w_exp,) which contains current experience of state.
     pos : int, default 0
         Index for current choice with experience. If index is valid for array
@@ -596,11 +596,11 @@ def _create_core_state_space_per_period(period, additional_exp, optim_paras):
     ----------
     period : int
         Number of period.
-    additional_exp : numpy.ndarray
+    additional_exp : :class:`numpy.ndarray`
         Array with shape (n_choices_w_exp,) containing integers representing the
         additional experience per choice which is admissible. This is the difference
         between the maximum experience and minimum of initial experience per choice.
-    experiences : None or numpy.ndarray, default None
+    experiences : None or :class:`numpy.ndarray`, default None
         Array with shape (n_choices_w_exp,) which contains current experience of state.
     pos : int, default 0
         Index for current choice with experience. If index is valid for array
@@ -919,7 +919,7 @@ def _get_continuation_values(
 
     Returns
     -------
-    continuation_values : numpy.ndarray
+    continuation_values : :class:`numpy.ndarray`
         Array with shape ``(n_states, n_choices)``. Maps core_key and choice into
         continuation value.
 
@@ -955,9 +955,9 @@ def _collect_child_indices(complex_, choice_set, indexer, optim_paras, options):
 
     Parameters
     ----------
-    complex_ : tuple
+    complex_ : tuple [int or tuple [bool]]
         See :ref:`complex`.
-    choice_set : tuple
+    choice_set : :class:`numpy.ndarray` [bool]
         Tuple representing admissible choices
     indexer : numba.typed.Dict
         A dictionary with core states as keys and the core key and core index as values.
@@ -968,11 +968,13 @@ def _collect_child_indices(complex_, choice_set, indexer, optim_paras, options):
 
     Returns
     -------
-    indices : numpy.ndarray
+    indices : :class:`numpy.ndarray`
         Array with shape ``(n_states, n_choices * 2)``. Represents the mapping
         (core_index, choice) -> (dense_key, core_index).
 
     """
+    import pdb
+    pdb.set_trace()
     core_columns = create_core_state_space_columns(optim_paras)
     states = load_objects("states", complex_, options)
 
