@@ -46,7 +46,7 @@ def get_simulate_func(
     ----------
     params : pandas.DataFrame
         DataFrame containing model parameters.
-    options : dict
+    options : dict [str, int or list or dict]
         Dictionary containing model options.
     method : {"n_step_ahead_with_sampling", "n_step_ahead_with_data", "one_step_ahead"}
         The simulation method which can be one of three and is explained in more detail
@@ -145,10 +145,10 @@ def simulate(
     ----------
     params : pandas.DataFrame or pandas.Series
         Contains parameters.
-    base_draws_sim : numpy.ndarray
+    base_draws_sim : numpy.ndarray [float]
         Array with shape (n_periods, n_individuals, n_choices) to provide a unique set
         of shocks for each individual in each period.
-    base_draws_wage : numpy.ndarray
+    base_draws_wage : numpy.ndarray [float]
         Array with shape (n_periods, n_individuals, n_choices) to provide a unique set
         of wage measurement errors for each individual in each period.
     df : pandas.DataFrame or None
@@ -166,7 +166,7 @@ def simulate(
         Number periods to simulate.
     solve : :func:`~respy.solve.solve`
         Function which creates the solution of the model with new parameters.
-    options : dict
+    options : dict [str, int or list or dict]
         Contains model options.
 
     Returns
@@ -252,8 +252,8 @@ def apply_law_of_motion_for_dense(df, state_space, optim_paras):
     df : pandas.DataFrame
         A pandas DataFrame containing the updated state variables, as well as the
         draw of next periods dense key.
-    state_space
-    optim_paras
+    state_space : :class:`~respy.state_space.StateSpace`
+    optim_paras : dict [str, int or float or :class:`numpy.ndarray` or dict]
 
     Returns
     -------
@@ -313,8 +313,8 @@ def _extend_data_with_sampled_characteristics(df, optim_paras, options):
         A pandas DataFrame which contains only an index for n-step-ahead simulation with
         sampling. For the other simulation methods, it contains information on
         individuals which is allowed to have missing information in the first period.
-    optim_paras : dict
-    options : dict
+    optim_paras : dict [str, int or float or :class:`numpy.ndarray` or dict]
+    options : dict [str, int or list or dict]
 
     Returns
     -------
@@ -459,9 +459,9 @@ def draw_dense_key_next_period(complex_tuple, core_index, options):
 
     Parameters
     ----------
-    complex_tuple
-    core_index
-    options
+    complex_tuple :
+    core_index :
+    options : dict [str, int or list or dict]
 
     Returns
     -------
@@ -501,9 +501,9 @@ def _sample_characteristic(states_df, options, level_dict, use_keys):
     ----------
     states_df : pandas.DataFrame
         Contains the state of each individual.
-    options : dict
+    options : dict [str, int or list or dict]
         Options of the model.
-    level_dict : dict
+    level_dict : dict [int, pandas.Series]
         A dictionary where the keys are the values distributed according to the
         probability mass function. The values are a :class:`pandas.Series` with
         covariate names as the index and parameter values.
@@ -513,7 +513,7 @@ def _sample_characteristic(states_df, options, level_dict, use_keys):
 
     Returns
     -------
-    characteristic : numpy.ndarray
+    characteristic : numpy.ndarray [int]
         Array with shape (n_individuals,) containing sampled values.
 
     """
@@ -568,9 +568,9 @@ def _process_simulation_output(data, optim_paras):
 
     Parameters
     ----------
-    data : list
+    data : list [pandas.DataFrame]
         List of DataFrames for each simulated period with internal codes and labels.
-    optim_paras : dict
+    optim_paras : dict [str, int or float or :class:`numpy.ndarray` or dict]
 
     Returns
     -------

@@ -985,7 +985,6 @@ def _collect_child_indices(complex_, choice_set, indexer, optim_paras, options):
         states_["choice"] = choice
         states_ = apply_law_of_motion_for_core(states_, optim_paras)
         states_ = states_[["period"] + core_columns]
-
         indices[:, i, 0], indices[:, i, 1] = map_states_to_core_key_and_core_index(
             states_.to_numpy(), indexer
         )
