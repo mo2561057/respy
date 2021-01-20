@@ -973,8 +973,6 @@ def _collect_child_indices(complex_, choice_set, indexer, optim_paras, options):
         (core_index, choice) -> (dense_key, core_index).
 
     """
-    import pdb
-    pdb.set_trace()
     core_columns = create_core_state_space_columns(optim_paras)
     states = load_objects("states", complex_, options)
 
