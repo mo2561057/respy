@@ -126,8 +126,7 @@ def _create_param_specific_objects(
     """
     states = load_objects("states", complex_, options)
     wages, nonpecs = _create_choice_rewards(states, choice_set, optim_paras)
-    import pdb
-    pdb.set_trace()
+
     if optim_paras["exogenous_processes"]:
         transition_probabilities = compute_transition_probabilities(
             states, transit_keys, optim_paras, dense_key_to_dense_covariates
