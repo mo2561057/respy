@@ -26,7 +26,20 @@ from respy.shared import return_core_dense_key
 
 
 def create_state_space_class(optim_paras, options):
-    """Create the state space of the model."""
+    """Create the state space of the model.
+
+    Parameters
+    ----------
+        optim_paras : dict [str, int or float or :class:`numpy.ndarray` or dict]
+            Processed model options and params.
+        options : dict [str, int or list or dict]
+            User specified attributes of the model like seeds, periods, etc.
+
+    Returns
+    -------
+        state_space : :class:`~respy.state_space.StateSpace`
+
+    """
     prepare_cache_directory(options)
     core = _create_core_state_space(optim_paras, options)
     dense_grid = _create_dense_state_space_grid(optim_paras)
@@ -100,15 +113,17 @@ class StateSpace:
         indexer : numba.typed.Dict
             Maps states (rows of core) into tuples containing core key and
             core index. i : state -> (core_key, core_index)
-        dense : dict
+        dense : bool or dict [tuple [int], dict [str, int or bool]]
             Maps dense states into dense covariates.
-        dense_period_cores : dict
+        dense_period_cores : dict [tuple [int, tuple [bool]], int]
             Maps period, choice_set and dense_index into core_key.
             d : (core_key,choice_set,dense_index) -> core_key
-        core_key_to_complex : dict
+        core_key_to_complex : dict [int, tuple [bool]]
             Maps period and choice_set into core_key
-        core_key_to_core_indices : dict
+        core_key_to_core_indices : dict [int, :class:`pandas.Int64Index`]
             Maps core_keys into core_indices.
+        optim_paras : dict [str, int or float or :class:`numpy.ndarray` or dict]
+        options : dict [str, int or list or dict]
 
         """
         self.core = core
@@ -394,7 +409,7 @@ class StateSpace:
         ----------
         attribute : str
             The name of the state space attribute which is changed in-place.
-        value : numpy.ndarray
+        value : :class:`numpy.ndarray`
             The value to which the Numpy array is set.
 
         """
@@ -509,10 +524,7 @@ def _create_core_from_choice_experiences(optim_paras):
 
     container = []
     for period in np.arange(optim_paras["n_periods"], dtype=np.uint8):
-        data = _create_core_state_space_per_period(
-            period,
-            additional_exp,
-            optim_paras)
+        data = _create_core_state_space_per_period(period, additional_exp, optim_paras)
         df_ = pd.DataFrame(data=data, columns=exp_cols)
         df_.insert(0, "period", period)
         container.append(df_)
@@ -538,11 +550,11 @@ def _create_core_state_space_per_period_alt(
     ----------
     period : int
         Number of period.
-    additional_exp : numpy.ndarray
+    additional_exp : :class:`numpy.ndarray`
         Array with shape (n_choices_w_exp,) containing integers representing the
         additional experience per choice which is admissible. This is the difference
         between the maximum experience and minimum of initial experience per choice.
-    experiences : None or numpy.ndarray, default None
+    experiences : None or :class:`numpy.ndarray`, default None
         Array with shape (n_choices_w_exp,) which contains current experience of state.
     pos : int, default 0
         Index for current choice with experience. If index is valid for array
@@ -570,9 +582,7 @@ def _create_core_state_space_per_period_alt(
             )
 
 
-def _create_core_state_space_per_period(
-    period, additional_exp, optim_paras
-):
+def _create_core_state_space_per_period(period, additional_exp, optim_paras):
     """Create core state space per period.
 
     First, this function returns a state combined with all possible lagged choices and
@@ -586,11 +596,11 @@ def _create_core_state_space_per_period(
     ----------
     period : int
         Number of period.
-    additional_exp : numpy.ndarray
+    additional_exp : :class:`numpy.ndarray`
         Array with shape (n_choices_w_exp,) containing integers representing the
         additional experience per choice which is admissible. This is the difference
         between the maximum experience and minimum of initial experience per choice.
-    experiences : None or numpy.ndarray, default None
+    experiences : None or :class:`numpy.ndarray`, default None
         Array with shape (n_choices_w_exp,) which contains current experience of state.
     pos : int, default 0
         Index for current choice with experience. If index is valid for array
@@ -600,13 +610,16 @@ def _create_core_state_space_per_period(
     """
     set_choices = [list(range(x + 1)) for x in additional_exp]
     list_comb = list(itertools.product(*set_choices))
-    out = np.concatenate([np.array(x) for x in list_comb]).reshape(len(list_comb),len(additional_exp))
+    out = np.concatenate([np.array(x) for x in list_comb]).reshape(
+        len(list_comb), len(additional_exp)
+    )
     check = out.sum(axis=1)
     filter_out = check <= period
     return out[filter_out]
 
 
 def _add_lagged_choice_to_core_state_space(df, optim_paras):
+    """Add lagged choice to the core state space."""
     container = []
     for lag in range(1, optim_paras["n_lagged_choices"] + 1):
         for choice_code in range(len(optim_paras["choices"])):
@@ -632,7 +645,7 @@ def _filter_core_state_space(df, options):
     Parameters
     ----------
     df : pandas.DataFrame
-    options : dict
+    options : dict [str, int or list or dict]
 
     """
     for definition in options["core_state_space_filters"]:
@@ -648,6 +661,17 @@ def _add_initial_experiences_to_core_state_space(df, optim_paras):
     function loops through all combinations from initial experiences and adds them to
     existing experiences. After that, we need to check whether the maximum in
     experiences is still binding.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+    optim_paras : dict [str, int or float or :class:`numpy.ndarray` or dict]
+
+    Returns
+    -------
+    df : pandas.DataFrame
+        Core state space where initial experiences have been added to experiences
+        gained in the model.
 
     """
     choices = optim_paras["choices"]
@@ -688,12 +712,12 @@ def _create_dense_state_space_grid(optim_paras):
 
     Parameters
     ----------
-    optim_paras : dict
+    optim_paras : dict [str, int or float or :class:`numpy.ndarray` or dict]
         Contains parsed model parameters.
 
     Returns
     -------
-    dense_state_space_grid : list
+    dense_state_space_grid : bool or list [tuple [int]]
         Contains all dense states as tuples.
 
     """
@@ -708,7 +732,18 @@ def _create_dense_state_space_grid(optim_paras):
 
 
 def _create_dense_state_space_covariates(dense_grid, optim_paras, options):
-    """Obtain covariates for all dense states."""
+    """Obtain covariates for all dense states.
+
+    Parameters
+    ----------
+    dense_grid : bool or list [tuple [int]]
+    optim_paras : dict [str, int or float or :class:`numpy.ndarray` or dict]
+    options : dict [str, int or list or dict]
+
+    Returns
+    -------
+    covariates : bool or dict [tuple [int], dict [str, int or bool]]
+    """
     if dense_grid:
         columns = create_dense_state_space_columns(optim_paras)
 
@@ -772,7 +807,7 @@ def _create_core_period_choice(core, optim_paras, options):
 
     Returns
     -------
-    core_period_choice : dict
+    core_period_choice : dict [tuple [int, tuple [bool]], pandas.Int64Index]
         c: (period, choice_set) -> core_indices
 
     """
@@ -784,6 +819,7 @@ def _create_core_period_choice(core, optim_paras, options):
         (idx[0], idx[1:]): indices
         for idx, indices in df.groupby(["period"] + choices).groups.items()
     }
+
     return core_period_choice
 
 
@@ -802,7 +838,7 @@ def _create_dense_period_choice(
 
     Returns
     -------
-    dense_period_choice : dict
+    dense_period_choice : dict [tuple [int or tuple [bool], int]
         d: (period, choice_set, dense_index) -> core_key
 
     """
@@ -828,14 +864,14 @@ def _create_dense_period_choice(
                 for key in dense_vec.keys():
                     df[key] = dense_vec[key]
                 for choice in choices:
-                    df[choice] = df[choice].replace({True:False, False:True})
-                
+                    df[choice] = df[choice].replace({True: False, False: True})
+
                 unique_combinations = df.drop_duplicates(subset=choices)[choices]
                 choice_combs = []
                 for ix in unique_combinations.index:
-                    choice_combs.append(unique_combinations.loc[ix,choices].values)
+                    choice_combs.append(unique_combinations.loc[ix, choices].values)
                 grouper = {}
-                
+
                 for comb in choice_combs:
                     filter_ = (df[choices] == comb).all(axis=1)
                     grouper[tuple(comb)] = list(df[filter_].index)
@@ -883,7 +919,7 @@ def _get_continuation_values(
 
     Returns
     -------
-    continuation_values : numpy.ndarray
+    continuation_values : :class:`numpy.ndarray`
         Array with shape ``(n_states, n_choices)``. Maps core_key and choice into
         continuation value.
 
@@ -919,20 +955,20 @@ def _collect_child_indices(complex_, choice_set, indexer, optim_paras, options):
 
     Parameters
     ----------
-    complex_ : tuple
+    complex_ : tuple [int or tuple [bool]]
         See :ref:`complex`.
-    choice_set : tuple
+    choice_set : :class:`numpy.ndarray` [bool]
         Tuple representing admissible choices
     indexer : numba.typed.Dict
         A dictionary with core states as keys and the core key and core index as values.
-    optim_paras : dict
+    optim_paras : dict [str, int or float or :class:`numpy.ndarray` or dict]
         Contains model parameters.
-    options : dict
+    options : dict [str, int or list or dict]
         Contains model options.
 
     Returns
     -------
-    indices : numpy.ndarray
+    indices : :class:`numpy.ndarray`
         Array with shape ``(n_states, n_choices * 2)``. Represents the mapping
         (core_index, choice) -> (dense_key, core_index).
 
@@ -950,7 +986,6 @@ def _collect_child_indices(complex_, choice_set, indexer, optim_paras, options):
         states_["choice"] = choice
         states_ = apply_law_of_motion_for_core(states_, optim_paras)
         states_ = states_[["period"] + core_columns]
-
         indices[:, i, 0], indices[:, i, 1] = map_states_to_core_key_and_core_index(
             states_.to_numpy(), indexer
         )

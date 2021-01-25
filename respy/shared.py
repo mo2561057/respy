@@ -79,7 +79,7 @@ def create_base_draws(shape, seed, monte_carlo_sequence):
 
     Parameters
     ----------
-    shape : tuple(int)
+    shape : tuple [int]
         Tuple representing the shape of the resulting array.
     seed : int
         Seed to control randomness.
@@ -88,7 +88,7 @@ def create_base_draws(shape, seed, monte_carlo_sequence):
 
     Returns
     -------
-    draws : numpy.ndarray
+    draws : numpy.ndarray [float]
         Array with shape (n_choices, n_draws, n_choices).
 
     See also
@@ -245,7 +245,7 @@ def compute_covariates(df, definitions, check_nans=False, raise_errors=True):
     df : pandas.DataFrame
         DataFrame with some, maybe not all state space dimensions like period,
         experiences.
-    definitions : dict
+    definitions : dict [str, dict [{'formula', 'depends_on'}, str or set [str]]]
         Keys represent covariates and values are strings passed to ``df.eval``.
     check_nans : bool, default False
         Perform a check whether the variables used to compute the selected covariate do
@@ -317,6 +317,15 @@ def convert_labeled_variables_to_codes(df, optim_paras):
 
     We need to check choice variables and observables for potential labels. The
     mapping from labels to code can be inferred from the order in ``optim_paras``.
+
+    Parameters
+    ----------
+        df : pandas.DataFrame
+        optim_paras : dict [str, int or float or :class:`numpy.ndarray` or dict]
+
+    Returns
+    -------
+        df : pandas.DataFrame
 
     """
     choices_to_codes = {choice: i for i, choice in enumerate(optim_paras["choices"])}
@@ -466,14 +475,14 @@ def calculate_expected_value_functions(
 
     Parameters
     ----------
-    wages : numpy.ndarray
+    wages : numpy.ndarray [float]
         Array with shape (n_choices,) containing wages.
-    nonpecs : numpy.ndarray
+    nonpecs : numpy.ndarray [float]
         Array with shape (n_choices,) containing non-pecuniary rewards.
-    continuation_values : numpy.ndarray
+    continuation_values : numpy.ndarray [float]
         Array with shape (n_choices,) containing expected maximum utility for each
         choice in the subsequent period.
-    draws : numpy.ndarray
+    draws : numpy.ndarray [float]
         Array with shape (n_draws, n_choices).
     delta : float
         The discount factor.
@@ -561,7 +570,7 @@ def pandas_dot(x, beta, out=None):
         A DataFrame containing the covariates of the dot product.
     beta : pandas.Series
         A Series containing the parameters or coefficients of the dot product.
-    out : numpy.ndarray or optional
+    out : numpy.ndarray [float] or optional
         An output array can be passed to the function which is filled instead of
         allocating a new array.
 
@@ -623,9 +632,9 @@ def map_states_to_core_key_and_core_index(states, indexer):
 
     Parameters
     ----------
-    states : numpy.ndarray
+    states : numpy.ndarray [float]
         Multidimensional array containing only core dimensions of states.
-    indexer : numba.typed.Dict
+    indexer : numba.typed.Dict [tuple [int], tuple [int]]
         A dictionary with core states as keys and the core key and core index as values.
 
     Returns
@@ -738,7 +747,7 @@ def apply_law_of_motion_for_core(df, optim_paras):
         The DataFrame contains states with information on the period, experiences,
         previous choices. The current choice is encoded as an integer in a column named
         ``"choice"``.
-    optim_paras : dict
+    optim_paras : dict [str, int or float or :class:`numpy.ndarray` or dict]
         Contains model parameters.
 
     Returns
@@ -782,8 +791,8 @@ def get_choice_set_from_complex(complex_tuple):
 
     Parameters
     ----------
-    complex_tuple : tuple
-        The complex tuple.
+    complex_tuple : tuple [int or tuple [bool]]
+        The complex tuple with structure (int, tuple [int], int).
 
     Returns
     -------
@@ -799,7 +808,7 @@ def get_exogenous_from_dense_covariates(dense_covariates, optim_paras):
     ----------
     dense_covariates : tuple
         Dense covariates grid point.
-    optim_paras : dict
+    optim_paras : dict [str, int or float or :class:`numpy.ndarray` or dict]
 
     Returns
     -------
