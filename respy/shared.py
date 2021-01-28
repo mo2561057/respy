@@ -857,10 +857,18 @@ class core_class:
             core: dict of numpy arrays
             indices: list of integers
         """
-        self.core[key] = value
+        if type(value) is np.ndarray:
+            if len(value) == len(self):
+                self.core[key] = value
+            else:
+                raise ValueError
+        elif type(value) in [int, float, np.int64]:
+            self.core[key] = np.repeat(value,len(self))
+
 
     def eval_core(self,exp):
         return eval(exp,{},self.core)
+
 
     def subset(self,ix):
         out = {key:self.core[key][ix] for key in self.core}
@@ -873,17 +881,18 @@ class core_class:
 
     def return_index_for_comb(self,cols):
         for col in cols:
-        combs = itertools.product(*[list(np.unique(self.core[col])) for col in cols])
+            combs = itertools.product(*[list(np.unique(self.core[col])) for col in cols])
         out = []
         for comb in combs:
             cont_im = []
             for i,col in enumerate(cols):
                 cont_im.append(self.core[col] == comb[i])
             filter_ = functools.reduce(lambda x,y: x & y, cont_im)
-            ix = np.where(filter_,True)
+            ix = np.where(filter_)
             out.append((comb,ix))
         return out
-    
+            
+
     def assign(self,vec):
         pass
 

@@ -33,7 +33,7 @@ def create_state_space_class(optim_paras, options):
     core_df = _create_core_state_space(optim_paras, options)
 
     core = core_class(
-        {key:core_df[key] for key in core_df.columns},
+        {key:core_df[key].values for key in core_df.columns},
         core_df.columns,
         core_df.index,
         core_df.shape)
@@ -771,7 +771,8 @@ def _create_indexer(core, core_key_to_core_indices, optim_paras):
     )
 
     for core_idx, indices in core_key_to_core_indices.items():
-        states = core.loc[indices, core_columns].to_numpy()
+        states = np.concatenate(list(core.subset(indices)[core_columns].values()))
+        print(states)
         for i, state in enumerate(states):
             indexer[tuple(state)] = (core_idx, i)
     return indexer
@@ -834,7 +835,7 @@ def _create_dense_period_choice(
 
             states = create_is_inadmissible(states, optim_paras, options)
             for core_idx, indices in core_key_to_core_indices.items():
-                df = subset(copy.copy(states),indices)
+                df = copy.copy(states).subset(indices)
                 for key in dense_vec.keys():
                     df[key] = dense_vec[key]
                 for choice in choices:
