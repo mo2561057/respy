@@ -771,10 +771,13 @@ def _create_indexer(core, core_key_to_core_indices, optim_paras):
     )
 
     for core_idx, indices in core_key_to_core_indices.items():
-        states = np.concatenate(list(core.subset(indices)[core_columns].values()))
-        print(states)
+        # TODO: Find a more elegant way to handle these shape issues!
+        states = [arr.reshape(len(arr),1) for arr in core.subset(indices)[core_columns].values()]
+        states = np.concatenate(states,axis=1)
+        
         for i, state in enumerate(states):
             indexer[tuple(state)] = (core_idx, i)
+
     return indexer
 
 
@@ -820,7 +823,7 @@ def _create_dense_period_choice(
     if not dense:
         for key, complex_ in core_key_to_complex.items():
             dump_objects(
-                core.loc[core_key_to_core_indices[key]], "states", complex_, options
+                core.subset(core_key_to_core_indices[key]), "states", complex_, options
             )
         dense_period_choice = {k: i for i, k in core_key_to_complex.items()}
     else:
@@ -940,6 +943,7 @@ def _collect_child_indices(complex_, choice_set, indexer, optim_paras, options):
 
     """
     core_columns = create_core_state_space_columns(optim_paras)
+    print(complex_)
     states = load_objects("states", complex_, options)
 
     n_choices = sum(choice_set)
@@ -947,7 +951,7 @@ def _collect_child_indices(complex_, choice_set, indexer, optim_paras, options):
 
     indices_valid_choices = [i for i, is_valid in enumerate(choice_set) if is_valid]
     for i, choice in enumerate(indices_valid_choices):
-        states_ = states.copy(deep=True)
+        states_ = copy.copy(states)
 
         states_["choice"] = choice
         states_ = apply_law_of_motion_for_core(states_, optim_paras)

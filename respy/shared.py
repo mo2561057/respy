@@ -8,6 +8,7 @@ import copy
 import functools
 import itertools
 import shutil
+import pickle as pkl
 
 import chaospy as cp
 import numba as nb
@@ -674,25 +675,27 @@ def _map_observations_to_dense_index(
 def dump_objects(objects, topic, complex_, options):
     """Dump states."""
     file_name = _create_file_name_from_complex_index(topic, complex_)
-    objects.to_parquet(
-        options["cache_path"] / file_name, compression=options["cache_compression"],
-    )
+    with open(options["cache_path"] / file_name,"wb") as file:
+        pkl.dump(objects,file)
+
 
 
 def load_objects(topic, complex_, options):
     """Load states."""
     file_name = _create_file_name_from_complex_index(topic, complex_)
     directory = options["cache_path"]
-    return pd.read_parquet(directory / file_name)
+    with open(directory / file_name,"rb") as file:
+        out = pkl.load(file)
+    return out
 
 
 def _create_file_name_from_complex_index(topic, complex_):
     """Create a file name from a complex index."""
     choice = "".join([str(int(x)) for x in complex_[1]])
     if len(complex_) == 3:
-        file_name = f"{topic}_{complex_[0]}_{choice}_{complex_[2]}.parquet"
+        file_name = f"{topic}_{complex_[0]}_{choice}_{complex_[2]}.pkl"
     elif len(complex_) == 2:
-        file_name = f"{topic}_{complex_[0]}_{choice}.parquet"
+        file_name = f"{topic}_{complex_[0]}_{choice}.pkl"
     else:
         raise NotImplementedError
 
