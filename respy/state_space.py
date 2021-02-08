@@ -34,7 +34,6 @@ def create_state_space_class(optim_paras, options):
 
     core = core_class(
         {key:core_df[key].values for key in core_df.columns},
-        core_df.columns,
         core_df.index,
         core_df.shape)
 
@@ -745,7 +744,7 @@ def create_is_inadmissible(df, optim_paras, options):
         df[f"_{choice}"] = np.repeat(False,len(df))
         for formula in options["negative_choice_set"][choice]:
             try:
-                df[f"_{choice}"] |= df.eval_core(formula)
+                df[f"_{choice}"] |= df.eval(formula)
             except NameError:
                 prnt(f"Could not calculate {choice}")
 
@@ -772,8 +771,8 @@ def _create_indexer(core, core_key_to_core_indices, optim_paras):
 
     for core_idx, indices in core_key_to_core_indices.items():
         # TODO: Find a more elegant way to handle these shape issues!
-        states = [arr.reshape(len(arr),1) for arr in core.subset(indices)[core_columns].values()]
-        states = np.concatenate(states,axis=1)
+        states = core.subset(indices)[core_columns].to_numpy()
+        
         
         for i, state in enumerate(states):
             indexer[tuple(state)] = (core_idx, i)
@@ -852,17 +851,19 @@ def _create_dense_period_choice(
                         "period are created. Use penalties in the utility functions "
                         "for that."
                     )
+                # Beware of index[1:] here. The groupby still contains the period prbly redundant
+                # Check that!
                 period_choice = {
-                    (core_key_to_complex[core_idx][0], idx, dense_idx): core_idx
+                    (core_key_to_complex[core_idx][0], idx[1:], dense_idx): core_idx
                     for idx, indices in grouper
                 }
 
                 dense_period_choice = {**dense_period_choice, **period_choice}
                 idx = grouper[0][0]
                 dump_objects(
-                    df.core,
+                    df,
                     "states",
-                    (core_key_to_complex[core_idx][0], idx, dense_idx),
+                    (core_key_to_complex[core_idx][0], idx[1:], dense_idx),
                     options,
                 )
 
@@ -943,7 +944,6 @@ def _collect_child_indices(complex_, choice_set, indexer, optim_paras, options):
 
     """
     core_columns = create_core_state_space_columns(optim_paras)
-    print(complex_)
     states = load_objects("states", complex_, options)
 
     n_choices = sum(choice_set)
@@ -951,7 +951,7 @@ def _collect_child_indices(complex_, choice_set, indexer, optim_paras, options):
 
     indices_valid_choices = [i for i, is_valid in enumerate(choice_set) if is_valid]
     for i, choice in enumerate(indices_valid_choices):
-        states_ = copy.copy(states)
+        states_ = copy.deepcopy(states)
 
         states_["choice"] = choice
         states_ = apply_law_of_motion_for_core(states_, optim_paras)

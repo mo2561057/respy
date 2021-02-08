@@ -155,6 +155,7 @@ def transform_base_draws_with_cholesky_factor(
     create_base_draws
 
     """
+    print(choice_set)
     shocks_cholesky = subset_cholesky_factor_to_choice_set(shocks_cholesky, choice_set)
     draws_transformed = draws.dot(shocks_cholesky.T)
 
@@ -274,6 +275,7 @@ def compute_covariates(df, definitions, check_nans=False, raise_errors=True):
 
     """
     has_covariates_left_changed = True
+    is_pandas = type(df) == pd.core.frame.DataFrame
     covariates_left = list(definitions)
 
     while has_covariates_left_changed:
@@ -288,24 +290,30 @@ def compute_covariates(df, definitions, check_nans=False, raise_errors=True):
                 continue
 
             # Check that the dependencies are present.
-            index_or_columns = df.columns.union(df.index.names)
+            index_or_columns = list(set(df.columns)|set(df.index.names))
             are_dependencies_present = all(
                 dep in index_or_columns for dep in definitions[covariate]["depends_on"]
             )
             if are_dependencies_present:
                 # If true, perform checks for NaNs.
                 if check_nans:
-                    have_dependencies_no_missings = all(
-                        df.eval(f"np.all(~np.isnan({dep}))")
-                        for dep in definitions[covariate]["depends_on"]
-                    )
+                    if is_pandas:
+                        have_dependencies_no_missings = all(
+                            df.eval(f"{dep}.notna().all()")
+                            for dep in definitions[covariate]["depends_on"]
+                        )
+                    else:
+                        have_dependencies_no_missings = all(
+                            df.eval(f"np.all(~np.isnan({dep}))")
+                            for dep in definitions[covariate]["depends_on"]
+                        )
                 else:
                     have_dependencies_no_missings = True
             else:
                 have_dependencies_no_missings = False
 
             if have_dependencies_no_missings:
-                df[covariate] = df.eval_core(definitions[covariate]["formula"])
+                df[covariate] = df.eval(definitions[covariate]["formula"])
                 covariates_left.remove(covariate)
 
         has_covariates_left_changed = n_covariates_left != len(covariates_left)
@@ -590,7 +598,7 @@ def pandas_dot(x, beta, out=None):
         out = np.zeros(x.shape[0])
 
     for covariate, beta in beta.items():
-        out += beta * x[covariate].values
+        out += beta * x[covariate]
 
     if not received_out:
         return out
@@ -757,29 +765,25 @@ def apply_law_of_motion_for_core(df, optim_paras):
 
     # Update work experiences.
     for i, choice in enumerate(optim_paras["choices_w_exp"]):
-        df[f"exp_{choice}"] += df["choice"] == i
+        df[f"exp_{choice}"] = df[f"exp_{choice}"] + (df["choice"] == i).astype(int)
 
     # Update lagged choices by deleting oldest lagged, renaming other lags and inserting
     # choice in the first position.
     if n_lagged_choices:
-        # Save position of first lagged choice.
-        position = df.columns.tolist().index("lagged_choice_1")
-
         # Drop oldest lag.
-        df = df.drop(columns=f"lagged_choice_{n_lagged_choices}")
+        df = df.drop(columns=[f"lagged_choice_{n_lagged_choices}"])
 
         # Rename newer lags
         rename_lagged_choices = {
             f"lagged_choice_{i}": f"lagged_choice_{i + 1}"
             for i in range(1, n_lagged_choices)
         }
-        df = df.rename(columns=rename_lagged_choices)
+        df = df.rename(rename_lagged_choices)
 
         # Add current choice as new lag.
-        df.insert(position, "lagged_choice_1", df["choice"])
+        df["lagged_choice_1"] =  copy.copy(df["choice"])
 
     df["period"] = df["period"] + 1
-
     return df
 
 
@@ -821,7 +825,6 @@ class core_class:
     def __init__(
         self,
         core,
-        columns,
         index,
         shape
     ):
@@ -833,7 +836,7 @@ class core_class:
             DataFrame containing one core state per row.
         """
         self.core = core
-        self.columns = columns
+        self.columns = list(self.core.keys())
         self.index = index
         self.shape = shape
 
@@ -849,38 +852,77 @@ class core_class:
             indices: list of integers
         """
         if type(key) is list:
-            return {x:self.core[x] for x in key}
-        
+            return core_class(
+            {x:self.core[x] for x in key},
+            self.index,
+            (self.shape[0],len(key))
+            )
         else:
             return self.core[key]
     
+
     def __setitem__(self,key,value):
         """Subset core to positional indices.
         Args:
             core: dict of numpy arrays
             indices: list of integers
         """
+        assign = copy.copy(value)
         if type(value) is np.ndarray:
             if len(value) == len(self):
-                self.core[key] = value
+                self.core[key] = assign
+                self.columns = list(self.core.keys())
             else:
                 raise ValueError
         elif type(value) in [int, float, np.int64]:
-            self.core[key] = np.repeat(value,len(self))
+            self.core[key] = np.repeat(assign,len(self))
+            self.columns = list(self.core.keys())
+
+    def eval(self,exp):
+        try:
+            return eval(exp,{},self.core)
+        # Hotfix such that tests run through
+        except ValueError:
+            print("Invalid eval strings will switch to pandas evaluation")
+            inter_df = pd.DataFrame(self.core)
+            return inter_df.eval(exp).to_numpy()
 
 
-    def eval_core(self,exp):
-        return eval(exp,{},self.core)
+    def drop(self, columns):
+        if type(columns) is not list:
+            columns = [columns]
+        new_cols = [col for col in self.core.keys() if col not in columns]
+        new = {key:self.core[key] for key in new_cols}
+        return core_class(
+            new,
+            self.index,
+            (self.shape[0],len(new_cols))
+        )
+
+
+    def rename(self,renaming):
+        out = self.core
+        for key,value in renaming.items():
+            out[value] = out.pop(key) 
+        return core_class(
+            out,
+            self.index,
+            self.shape
+        )
+
+
+    def insert(self,insert_col, arr):
+        pass 
 
 
     def subset(self,ix):
         out = {key:self.core[key][ix] for key in self.core}
         return core_class(
             out,
-            self.columns,
             ix,
             (len(ix),self.shape[1])
         )
+
 
     def return_index_for_comb(self,cols):
         for col in cols:
@@ -891,11 +933,12 @@ class core_class:
             for i,col in enumerate(cols):
                 cont_im.append(self.core[col] == comb[i])
             filter_ = functools.reduce(lambda x,y: x & y, cont_im)
-            ix = np.where(filter_)
-            out.append((comb,ix))
+            ix = np.where(filter_)[0]
+            if len(ix)>0:
+                out.append((comb,ix))
         return out
-            
 
-    def assign(self,vec):
-        pass
+
+    def to_numpy(self):
+        return np.concatenate([x.reshape(self.shape[0],1) for x in self.core.values()],axis=1)
 
