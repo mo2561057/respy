@@ -9,7 +9,7 @@ from respy.tests.utils import apply_to_attributes_of_two_state_spaces
 from respy.tests.utils import process_model_or_seed
 
 
-@pytest.mark.end_to_end
+@pytest.mark.xfail()
 @pytest.mark.parametrize(
     "model",
     ["robinson_crusoe_extended", "robinson_crusoe_with_observed_characteristics"],
