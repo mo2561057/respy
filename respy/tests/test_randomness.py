@@ -29,7 +29,9 @@ def test_invariance_of_model_solution_in_solve_and_criterion_functions(model):
     state_space_crit = log_like.keywords["solve"].keywords["state_space"]
 
     for state_space_ in [state_space_sim, state_space_crit]:
-        assert state_space.core.equals(state_space_.core.reindex_like(state_space.core))
+        #assert state_space.core.equals(state_space_.core.reindex_like(state_space.core))  
+        for k in state_space.core.core:
+            assert all(state_space.core.core[k] == state_space_.core.core[k])
 
         apply_to_attributes_of_two_state_spaces(
             state_space.wages, state_space_.wages, np.testing.assert_array_equal,
