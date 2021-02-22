@@ -7,13 +7,13 @@ from respy.config import KEANE_WOLPIN_1994_MODELS
 from respy.config import KEANE_WOLPIN_1997_MODELS
 from respy.pre_processing.model_checking import check_model_solution
 from respy.pre_processing.model_processing import process_params_and_options
+from respy.shared import core_class
 from respy.shared import create_core_state_space_columns
 from respy.solve import get_solve_func
 from respy.state_space import _create_core_period_choice
 from respy.state_space import _create_core_state_space
 from respy.state_space import _create_indexer
 from respy.state_space import create_state_space_class
-from respy.shared import core_class
 from respy.tests._former_code import _create_state_space_kw94
 from respy.tests._former_code import _create_state_space_kw97_base
 from respy.tests._former_code import _create_state_space_kw97_extended
@@ -33,7 +33,7 @@ def test_check_solution(model_or_seed):
 
     optim_paras, options = process_params_and_options(params, options)
 
-    #check_model_solution(optim_paras, options, state_space)
+    # check_model_solution(optim_paras, options, state_space)
 
 
 @pytest.mark.integration
@@ -136,10 +136,20 @@ def test_create_state_space_vs_specialized_kw94(model):
 
     states_new = _create_core_state_space(optim_paras, options)
     states_new = core_class(
-        {key:states_new[key].values for key in states_new.columns},
+        {key: states_new[key].values for key in states_new.columns},
         states_new.index,
-        states_new.shape)
+        states_new.shape,
+    )
 
+    # Compare the state spaces via sets as ordering changed in some cases.
+
+    states_old_set = set(map(tuple, states_old))
+    states_new_set = set(map(tuple, states_new.to_numpy()))
+
+    assert states_old_set == states_new_set
+
+    # !!! states_new is changed in this function, should we make a different
+    # copy or something?
     core_period_choice = _create_core_period_choice(states_new, optim_paras, options)
 
     # I think here we can get more elegant! Or is this the only way?
@@ -150,11 +160,6 @@ def test_create_state_space_vs_specialized_kw94(model):
 
     # Create sp indexer
     indexer = _create_indexer(states_new, core_index_to_indices, optim_paras)
-
-    # Compare the state spaces via sets as ordering changed in some cases.
-    states_old_set = set(map(tuple, states_old))
-    states_new_set = set(map(tuple, states_new.to_numpy()))
-    assert states_old_set == states_new_set
 
     # Compare indexers via masks for valid indices.
     for period in range(n_periods):
@@ -202,6 +207,19 @@ def test_create_state_space_vs_specialized_kw97(model):
     states_old = states_old[:, :-1]
 
     states_new = _create_core_state_space(optim_paras, options)
+    states_new = core_class(
+        {key: states_new[key].values for key in states_new.columns},
+        states_new.index,
+        states_new.shape,
+    )
+
+    # Compare the state spaces via sets as ordering changed in some cases.
+    # !!! Same issue as with 94 model test, _create_core_period_choice changes
+    # states_new internally.
+    states_old_set = set(map(tuple, states_old))
+    states_new_set = set(map(tuple, states_new.to_numpy()))
+
+    assert states_old_set == states_new_set
 
     core_period_choice = _create_core_period_choice(states_new, optim_paras, options)
 
@@ -213,11 +231,6 @@ def test_create_state_space_vs_specialized_kw97(model):
 
     # Create sp indexer
     indexer = _create_indexer(states_new, core_index_to_indices, optim_paras)
-
-    # Compare the state spaces via sets as ordering changed in some cases.
-    states_old_set = set(map(tuple, states_old))
-    states_new_set = set(map(tuple, states_new.to_numpy()))
-    assert states_old_set == states_new_set
 
     # Compare indexers via masks for valid indices.
     for period in range(n_periods):
@@ -365,6 +378,7 @@ def test_invariance_of_wage_calc():
 
     np.testing.assert_array_equal(wages_b, wages_b_alt)
 
+
 @pytest.mark.xfail
 @pytest.mark.integration
 def test_child_indices():
@@ -375,14 +389,13 @@ def test_child_indices():
 
     # Add some inadmissible states
     optim_paras, options = process_params_and_options(params, options)
-
     state_space = create_state_space_class(optim_paras, options)
 
     # Create all relevant columns
     core_columns = ["period"] + create_core_state_space_columns(optim_paras)
 
     # compose child indices of first choice
-    initial_state = state_space.core.subset([0])[core_columns].to_numpy()
+    initial_state = state_space.core.subset([0])[core_columns].to_numpy()[0]
 
     # Get all the future states
     states = []
@@ -395,6 +408,7 @@ def test_child_indices():
         states.append(np.array(ix).reshape(1, 2))
 
     manual = np.concatenate(states, axis=0)
+
     np.testing.assert_array_equal(state_space.child_indices[0][0], manual)
 
 
