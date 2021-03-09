@@ -413,13 +413,19 @@ def _simulate_single_period(
     )
 
     draws_wage = df[[f"meas_error_wage_{c}" for c in valid_choices]].to_numpy()
-    value_functions, flow_utilities = calculate_value_functions_and_flow_utilities(
-        wages,
-        nonpecs,
-        continuation_values,
-        draws_shock_transformed,
-        optim_paras["beta_delta"],
-    )
+
+    value_functions = np.zeros(wages.shape)
+    flow_utilities = np.zeros(wages.shape)
+    for i in range(value_functions.shape[0]):
+        for j in range(value_functions.shape[1]):
+            value_functions[i,j], flow_utilities[i,j] = calculate_value_functions_and_flow_utilities(
+                wages[i,j],
+                nonpecs[i,j],
+                continuation_values[i,j],
+                draws_shock_transformed[i,j],
+                optim_paras["beta_delta"],
+            )
+
     choice = np.nanargmax(value_functions, axis=1)
 
     # Get choice replacement dict. There is too much positioning until now!

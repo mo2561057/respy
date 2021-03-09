@@ -269,12 +269,16 @@ def _full_solution(
     -------
     period_expected_value_functions : dict [int, :class:`numpy.ndarray` [float]]
     """
-    period_expected_value_functions = calculate_expected_value_functions(
-        wages,
-        nonpecs,
-        continuation_values,
-        period_draws_emax_risk,
-        optim_paras["delta"],
-    )
+    period_expected_value_functions = np.zeros(wages.shape[0])
+    # Question to Dmitry: Should we parallelize this loop?
+    for j in range(wages.shape[0]):
+        im_expected_value = calculate_expected_value_functions(
+            wages[j,:],
+            nonpecs[j,:],
+            continuation_values[j,:],
+            period_draws_emax_risk,
+            optim_paras["delta"],
+        )
+        period_expected_value_functions[j] = im_expected_value
 
     return period_expected_value_functions

@@ -176,16 +176,12 @@ class StateSpace:
             for i in self.dense_key_to_complex
         }
 
-        self.core_key_and_dense_index_to_dense_key = Dict.empty(
-            key_type=nb.types.UniTuple(nb.types.int64, 2), value_type=nb.types.int64,
-        )
+        self.core_key_and_dense_index_to_dense_key = {
+            return_core_dense_key(self.dense_key_to_core_key[i],
+             *self.dense_key_to_complex[i][2:]):i
+             for i in self.dense_key_to_complex
+        }
 
-        for i in self.dense_key_to_complex:
-            self.core_key_and_dense_index_to_dense_key[
-                return_core_dense_key(
-                    self.dense_key_to_core_key[i], *self.dense_key_to_complex[i][2:],
-                )
-            ] = i
 
         if self.dense is False:
             self.dense_covariates_to_dense_index = {}
@@ -194,13 +190,9 @@ class StateSpace:
             }
 
         else:
-            n_dense = len(create_dense_state_space_columns(self.optim_paras))
-            self.dense_covariates_to_dense_index = Dict.empty(
-                key_type=nb.types.UniTuple(nb.types.int64, n_dense),
-                value_type=nb.types.int64,
-            )
-            for i, k in enumerate(self.dense):
-                self.dense_covariates_to_dense_index[k] = i
+            self.dense_covariates_to_dense_index = {
+                k:i for i,k in enumerate(self.dense)
+            }
 
             self.dense_key_to_dense_covariates = {
                 i: list(self.dense.keys())[self.dense_key_to_complex[i][2]]
@@ -209,12 +201,11 @@ class StateSpace:
 
     def create_arrays_for_expected_value_functions(self):
         """Create a container for expected value functions."""
-        self.expected_value_functions = Dict.empty(
-            key_type=nb.types.int64, value_type=nb.types.float64[:]
-        )
-        for index, indices in self.dense_key_to_core_indices.items():
-            self.expected_value_functions[index] = np.zeros(len(indices))
+        self.expected_value_functions = {
+            index:np.zeros(len(indices)) for index, indices in self.dense_key_to_core_indices.items()
+        }
 
+        
     def create_objects_for_exogenous_processes(self):
         """Create mappings for the implementation of the exogenous processes."""
         # Include switch arg

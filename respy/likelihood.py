@@ -315,15 +315,17 @@ def _compute_wage_and_choice_log_likelihood_contributions(
 
     selected_continuation_values = continuation_values[indices]
 
-    choice_loglikes = _simulate_log_probability_of_individuals_observed_choice(
-        selected_wages,
-        nonpecs[indices],
-        selected_continuation_values,
-        draws,
-        optim_paras["beta_delta"],
-        choices,
-        options["estimation_tau"],
-    )
+    choice_loglikes = np.zeros(selected_wages.shape[0])
+    for i in range(selected_wages.shape[0]):
+        choice_loglikes[i] = _simulate_log_probability_of_individuals_observed_choice(
+            selected_wages[i,:],
+            nonpecs[indices][i,:],
+            selected_continuation_values[i,:],
+            draws,
+            optim_paras["beta_delta"],
+            choices,
+            options["estimation_tau"],
+        )
 
     df["loglike_choice"] = np.clip(choice_loglikes, MIN_FLOAT, MAX_FLOAT)
     df["loglike_wage"] = np.clip(wage_loglikes, MIN_FLOAT, MAX_FLOAT)
@@ -365,7 +367,6 @@ def _compute_x_beta_for_type_probabilities(df, optim_paras, options):
     return df[range(optim_paras["n_types"])]
 
 
-@nb.njit
 def _logsumexp(x):
     """Compute logsumexp of `x`.
 
@@ -397,12 +398,6 @@ def _logsumexp(x):
     return log_sum_exp
 
 
-@nb.guvectorize(
-    ["f8[:], f8[:], f8[:], f8[:, :], f8, i8, f8, f8[:]"],
-    "(n_choices), (n_choices), (n_choices), (n_draws, n_choices), (), (), () -> ()",
-    nopython=True,
-    target="parallel",
-)
 def _simulate_log_probability_of_individuals_observed_choice(
     wages,
     nonpec,

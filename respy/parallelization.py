@@ -83,6 +83,14 @@ def split_and_combine_df(func):
     return wrapper_distribute_and_combine_df
 
 
+def emulate_guvectorize(func):
+    """Replace numba guvectorize but keep interface stable"""
+    @functools.wraps(func)
+    def wrapper_vectorize(*args, **kwargs):
+        pass
+    
+    return wrapper_vectorize 
+
 def _infer_dense_keys_from_arguments(args, kwargs):
     """Infer the dense indices from the arguments.
 

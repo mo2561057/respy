@@ -11,7 +11,6 @@ import shutil
 import pickle as pkl
 
 import chaospy as cp
-import numba as nb
 import numpy as np
 import pandas as pd
 
@@ -21,7 +20,6 @@ from respy.config import MIN_LOG_FLOAT
 from respy.parallelization import parallelize_across_dense_dimensions
 
 
-@nb.njit
 def aggregate_keane_wolpin_utility(wage, nonpec, continuation_value, draw, delta):
     """Calculate the utility of Keane and Wolpin models.
 
@@ -387,14 +385,8 @@ def normalize_probabilities(probabilities):
     return probabilities
 
 
-@nb.guvectorize(
-    ["f8, f8, f8, f8, f8, f8[:], f8[:]"],
-    "(), (), (), (), () -> (), ()",
-    nopython=True,
-    target="parallel",
-)
 def calculate_value_functions_and_flow_utilities(
-    wage, nonpec, continuation_value, draw, delta, value_function, flow_utility
+    wage, nonpec, continuation_value, draw, delta
 ):
     """Calculate the choice-specific value functions and flow utilities.
 
@@ -407,9 +399,10 @@ def calculate_value_functions_and_flow_utilities(
     aggregate_keane_wolpin_utility
 
     """
-    value_function[0], flow_utility[0] = aggregate_keane_wolpin_utility(
+    value_function, flow_utility = aggregate_keane_wolpin_utility(
         wage, nonpec, continuation_value, draw, delta
     )
+    return value_function, flow_utility
 
 
 def create_core_state_space_columns(optim_paras):
@@ -453,14 +446,8 @@ def create_state_space_columns(optim_paras):
     ) + create_dense_state_space_columns(optim_paras)
 
 
-@nb.guvectorize(
-    ["f8[:], f8[:], f8[:], f8[:, :], f8, f8[:]"],
-    "(n_choices), (n_choices), (n_choices), (n_draws, n_choices), () -> ()",
-    nopython=True,
-    target="parallel",
-)
 def calculate_expected_value_functions(
-    wages, nonpecs, continuation_values, draws, delta, expected_value_functions
+    wages, nonpecs, continuation_values, draws, delta
 ):
     r"""Calculate the expected maximum of value functions for a set of unobservables.
 
@@ -507,7 +494,7 @@ def calculate_expected_value_functions(
     """
     n_draws, n_choices = draws.shape
 
-    expected_value_functions[0] = 0
+    expected_value_functions = 0
 
     for i in range(n_draws):
 
@@ -521,9 +508,11 @@ def calculate_expected_value_functions(
             if value_function > max_value_functions:
                 max_value_functions = value_function
 
-        expected_value_functions[0] += max_value_functions
+        expected_value_functions += max_value_functions
 
-    expected_value_functions[0] /= n_draws
+    expected_value_functions /= n_draws
+
+    return expected_value_functions
 
 
 def convert_dictionary_keys_to_dense_indices(dictionary):
@@ -638,7 +627,6 @@ def map_observations_to_states(states, state_space, optim_paras):
     return dense_key, core_index
 
 
-@nb.njit
 def map_states_to_core_key_and_core_index(states, indexer):
     """Map states to the core key and core index.
 
@@ -662,14 +650,13 @@ def map_states_to_core_key_and_core_index(states, indexer):
     core_index = np.zeros(n_states, dtype=np.int64)
 
     for i in range(n_states):
-        core_key_, core_index_ = indexer[array_to_tuple(indexer, states[i])]
+        core_key_, core_index_ = indexer[tuple(states[i])]
         core_key[i] = core_key_
         core_index[i] = core_index_
 
     return core_key, core_index
 
 
-@nb.njit
 def _map_observations_to_dense_index(
     dense,
     core_index,
@@ -681,7 +668,7 @@ def _map_observations_to_dense_index(
 
     for i in range(n_observations):
         dense_index = dense_covariates_to_dense_index[
-            array_to_tuple(dense_covariates_to_dense_index, dense[i])
+            tuple(dense[i])
         ]
         dense_key_ = core_key_and_dense_index_to_dense_key[(core_index[i], dense_index)]
         dense_key[i] = dense_key_
@@ -918,10 +905,6 @@ class core_class:
             self.index,
             self.shape
         )
-
-
-    def insert(self,insert_col, arr):
-        pass 
 
 
     def subset(self,ix):
